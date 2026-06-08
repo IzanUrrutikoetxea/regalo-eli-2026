@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Calendario para Eliana · 21 jun — 21 jul</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500;1,600&family=Jost:wght@300;400;500&family=Pinyon+Script&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --bg:#05060c;
+    --bg2:#0a1024;
+    --panel:#0c1330;
+    --ink:#eef1fb;
+    --muted:#9aa3c4;
+    --faint:#5b6688;
+    --silver:rgba(208,216,240,.55);
+    --silver-soft:rgba(208,216,240,.20);
+    --blue:#5078e6;
+    --blue-deep:#1b285e;
+    --red:#c2415a;
+    --red-deep:#7d1f31;
+    --irid:conic-gradient(from 210deg,#5b8cff,#8a6bff,#ff5d8a,#ff9a6b,#46d6c8,#5b8cff);
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  html,body{height:100%;}
+  body{
+    background:#000;
+    color:var(--ink);
+    font-family:"Jost",sans-serif;
+    overflow:hidden;
+    -webkit-font-smoothing:antialiased;
+  }
+
+  /* ---- stage / scaling ---- */
+  #stage{
+    position:fixed; inset:0;
+    display:flex; align-items:center; justify-content:center;
+    background:#000;
+  }
+  #canvas{
+    position:relative;
+    width:1920px; height:1080px; flex:none;
+    transform-origin:center center;
+    background:
+      radial-gradient(1200px 760px at 50% -8%, #16204c 0%, rgba(22,32,76,0) 60%),
+      radial-gradient(1000px 900px at 86% 120%, #2a1430 0%, rgba(42,20,48,0) 55%),
+      radial-gradient(900px 900px at 8% 100%, #0c1c44 0%, rgba(12,28,68,0) 55%),
+      linear-gradient(180deg,#06070e 0%, #05060c 60%, #04050a 100%);
+    overflow:hidden;
+    color:var(--ink);
+  }
+  #canvas::after{ /* vignette */
+    content:""; position:absolute; inset:0; pointer-events:none;
+    box-shadow:inset 0 0 320px 80px rgba(0,0,0,.72);
+  }
+
+  /* ---- faint background mandalas ---- */
+  .mandala{ position:absolute; border-radius:50%; pointer-events:none; opacity:.5;
+    background:
+      repeating-radial-gradient(circle at center,
+        rgba(120,150,255,.07) 0 1px, transparent 1px 34px);
+    mask:radial-gradient(circle at center, #000 0 60%, transparent 72%);
+  }
+  .mandala.r{
+    background:repeating-radial-gradient(circle at center,
+        rgba(194,65,90,.08) 0 1px, transparent 1px 30px);
+  }
+  .m1{ width:1180px; height:1180px; left:-360px; top:-360px; }
+  .m2{ width:1320px; height:1320px; right:-440px; bottom:-460px; }
+
+  /* ---- masthead ---- */
+  .mast{ position:relative; z-index:3; text-align:center; padding:46px 0 8px; }
+  .overline{
+    font-family:"Jost",sans-serif; font-weight:400; font-size:14.5px;
+    letter-spacing:.46em; text-transform:uppercase; color:var(--muted);
+    padding-left:.46em;
+  }
+  .overline .dot{ color:var(--red); }
+  .titlewrap{ display:flex; align-items:baseline; justify-content:center; gap:18px; margin-top:2px; }
+  .para{ font-family:"Cormorant Garamond",serif; font-style:italic; font-weight:500;
+    font-size:34px; color:var(--muted); transform:translateY(-14px); }
+  .name{
+    font-family:"Pinyon Script",cursive; font-size:118px; line-height:1.18;
+    display:inline-block; overflow:visible;
+    background:var(--irid); background-size:200% 200%;
+    -webkit-background-clip:text; background-clip:text; color:transparent;
+    filter:drop-shadow(0 4px 26px rgba(120,140,255,.28));
+    padding:0 .42em 14px .08em;
+  }
+  .subtitle{ font-family:"Cormorant Garamond",serif; font-style:italic; font-weight:500;
+    font-size:23px; color:#c3cbe8; letter-spacing:.01em; margin-top:-2px; }
+  .rule{ width:230px; height:1px; margin:14px auto 0;
+    background:linear-gradient(90deg, transparent, var(--silver), transparent); position:relative; }
+  .rule::after{ content:""; position:absolute; left:50%; top:50%; width:6px; height:6px;
+    transform:translate(-50%,-50%) rotate(45deg); background:var(--red); box-shadow:0 0 10px var(--red); }
+
+  /* ---- grid ---- */
+  .gridwrap{ position:relative; z-index:3; display:flex; justify-content:center; margin-top:22px; }
+  .grid{
+    width:1606px; display:flex; flex-wrap:wrap; justify-content:center;
+    gap:24px 26px; align-content:center;
+  }
+
+  /* ---- portal ---- */
+  .portal{
+    position:relative; width:178px; height:178px; border:0; background:none;
+    cursor:pointer; padding:0; outline:none; isolation:isolate;
+    transition:transform .35s cubic-bezier(.2,.8,.25,1);
+  }
+  .portal .ring{ /* iridescent ring (today / hover) */
+    position:absolute; inset:-9px; border-radius:50%;
+    background:var(--irid); background-size:180% 180%;
+    -webkit-mask:radial-gradient(closest-side, transparent 0 67%, #000 69% 84%, transparent 86%);
+            mask:radial-gradient(closest-side, transparent 0 67%, #000 69% 84%, transparent 86%);
+    opacity:0; transition:opacity .4s ease; pointer-events:none;
+    filter:saturate(1.05);
+  }
+  .portal .face{
+    position:absolute; inset:0; border-radius:50%;
+    background:
+      radial-gradient(circle at 50% 38%, #142153 0%, #0a1130 55%, #060a1c 100%);
+    border:1px solid var(--silver-soft);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.06), inset 0 0 28px rgba(0,0,0,.55), 0 10px 30px rgba(0,0,0,.45);
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    transition:border-color .4s, box-shadow .4s, transform .4s;
+  }
+  .portal .face::before{ /* inner concentric red ring (jewelry) */
+    content:""; position:absolute; inset:18px; border-radius:50%;
+    border:1px solid rgba(194,65,90,.42);
+    box-shadow: inset 0 0 14px rgba(194,65,90,.10);
+  }
+  .portal .face::after{ /* thin silver ring */
+    content:""; position:absolute; inset:9px; border-radius:50%;
+    border:1px solid var(--silver-soft);
+  }
+  .portal .num{ font-family:"Cormorant Garamond",serif; font-weight:500; font-size:54px;
+    line-height:.9; color:#e9edfb; position:relative; z-index:2; }
+  .portal .mon{ font-family:"Jost",sans-serif; font-weight:400; font-size:12px;
+    letter-spacing:.34em; text-transform:uppercase; color:var(--muted); margin-top:6px;
+    padding-left:.34em; position:relative; z-index:2; }
+  .portal .visited{ position:absolute; bottom:36px; left:50%; transform:translateX(-50%);
+    width:5px; height:5px; border-radius:50%; background:var(--red); box-shadow:0 0 8px var(--red);
+    opacity:0; transition:opacity .3s; z-index:2; }
+
+  /* available (openable) */
+  .portal.available:hover{ transform:translateY(-5px); }
+  .portal.available:hover .ring{ opacity:.85; }
+  .portal.available:hover .face{ border-color:var(--silver); }
+  .portal.available.seen .visited{ opacity:1; }
+
+  /* today */
+  .portal.today .ring{ opacity:1; animation:irid 8s linear infinite; }
+  .portal.today .face{
+    border-color:var(--silver);
+    box-shadow: inset 0 0 26px rgba(91,140,255,.18), 0 0 44px rgba(120,150,255,.30), 0 0 80px rgba(194,65,90,.18);
+  }
+  .portal.today .num{ color:#fff; text-shadow:0 0 18px rgba(140,170,255,.5); }
+  .portal.today:hover{ transform:translateY(-5px); }
+  .portal.today .badge{ display:block; }
+  .badge{ display:none; position:absolute; top:-6px; left:50%; transform:translateX(-50%);
+    font-family:"Jost",sans-serif; font-size:10.5px; letter-spacing:.32em; text-transform:uppercase;
+    color:#fff; background:var(--red); padding:3px 9px 3px 11px; border-radius:20px; z-index:4;
+    box-shadow:0 4px 14px rgba(194,65,90,.5); }
+
+  @keyframes irid{ to{ background-position:180% 0; } }
+
+  /* locked (future) */
+  .portal.locked{ cursor:default; }
+  .portal.locked .face{
+    background:radial-gradient(circle at 50% 40%, #0c1228 0%, #080c1c 70%, #05070f 100%);
+    opacity:.46;
+  }
+  .portal.locked .num,.portal.locked .mon{ color:#46507a; }
+  .portal.locked .face::before{ border-color:rgba(110,120,160,.18); box-shadow:none; }
+  .portal.locked:hover{ transform:none; }
+  .portal.locked.shake{ animation:shake .5s; }
+  @keyframes shake{ 0%,100%{transform:translateX(0)} 20%,60%{transform:translateX(-5px)} 40%,80%{transform:translateX(5px)} }
+
+  /* ---- butterflies (geometric, elegant, static) ---- */
+  .butterfly{ position:absolute; pointer-events:none; }
+  .butterfly .b-body{ position:absolute; left:50%; top:8%; width:2px; height:78%;
+    transform:translateX(-50%); border-radius:2px;
+    background:linear-gradient(180deg, rgba(220,226,245,.85), rgba(150,160,200,.35)); }
+  .butterfly .ant{ position:absolute; top:4%; width:1px; height:22%;
+    background:linear-gradient(rgba(220,226,245,.7), transparent); }
+  .butterfly .ant.l{ left:50%; transform-origin:bottom; transform:translateX(-50%) rotate(-22deg); }
+  .butterfly .ant.r{ left:50%; transform-origin:bottom; transform:translateX(-50%) rotate(22deg); }
+  .butterfly .wing{ position:absolute; border-radius:60% 60% 55% 55%;
+    background:var(--irid); background-size:180% 180%;
+    border:.8px solid rgba(214,222,246,.5);
+    box-shadow:0 0 18px rgba(120,150,255,.18);
+    opacity:.62; }
+  .butterfly.red .wing{ background:radial-gradient(circle at 40% 30%, rgba(255,120,150,.85), rgba(125,31,49,.6)); }
+  /* wing geometry relative to a 100x90 box */
+  .butterfly .ul{ width:48%; height:48%; left:8%; top:10%; transform-origin:100% 100%; transform:rotate(-12deg); }
+  .butterfly .ur{ width:48%; height:48%; right:8%; top:10%; transform-origin:0% 100%; transform:rotate(12deg); }
+  .butterfly .ll{ width:38%; height:40%; left:14%; top:50%; transform-origin:100% 0%; transform:rotate(14deg); border-radius:55% 55% 65% 65%; }
+  .butterfly .lr{ width:38%; height:40%; right:14%; top:50%; transform-origin:0% 0%; transform:rotate(-14deg); border-radius:55% 55% 65% 65%; }
+
+  /* ---- footer ---- */
+  .footer{ position:absolute; left:0; right:0; bottom:0; z-index:5;
+    display:flex; align-items:center; justify-content:space-between;
+    padding:0 56px 26px; }
+  .foot-note{ font-family:"Cormorant Garamond",serif; font-style:italic; font-size:18px; color:var(--muted); }
+  .preview-toggle{ font-family:"Jost",sans-serif; font-size:12px; letter-spacing:.18em;
+    text-transform:uppercase; color:var(--muted); background:rgba(255,255,255,.03);
+    border:1px solid var(--silver-soft); padding:9px 16px; border-radius:30px; cursor:pointer;
+    display:flex; align-items:center; gap:9px; transition:.3s; }
+  .preview-toggle:hover{ color:var(--ink); border-color:var(--silver); }
+  .preview-toggle .lamp{ width:7px; height:7px; border-radius:50%; background:#3a4366; transition:.3s; }
+  .preview-toggle.on .lamp{ background:var(--irid); box-shadow:0 0 10px rgba(120,150,255,.7); }
+  .preview-toggle.on{ color:var(--ink); border-color:var(--silver); }
+
+  /* ---- modal ---- */
+  .scrim{ position:absolute; inset:0; z-index:30; display:none; align-items:center; justify-content:center;
+    background:rgba(3,4,10,.74); backdrop-filter:blur(8px); }
+  .scrim.open{ display:flex; }
+  .modal{ position:relative; width:720px; max-width:88%; padding:54px 64px 56px;
+    background:
+      radial-gradient(700px 400px at 50% -10%, #182455 0%, rgba(24,36,85,0) 60%),
+      linear-gradient(180deg,#0c1330 0%, #0a1026 100%);
+    border:1px solid var(--silver-soft); border-radius:8px; text-align:center;
+    box-shadow:0 40px 120px rgba(0,0,0,.6), 0 0 0 1px rgba(0,0,0,.4);
+    transform:translateY(14px) scale(.985); opacity:0; transition:transform .5s cubic-bezier(.2,.8,.25,1), opacity .5s; }
+  .scrim.open .modal{ transform:none; opacity:1; }
+  .modal .topline{ position:absolute; left:0; right:0; top:0; height:2px;
+    background:var(--irid); background-size:200% 200%; animation:irid 9s linear infinite;
+    border-radius:8px 8px 0 0; opacity:.85; }
+  .modal .m-butterfly{ width:96px; height:86px; position:relative; margin:0 auto 14px; }
+  .modal .m-date{ font-family:"Jost",sans-serif; font-size:13px; letter-spacing:.34em;
+    text-transform:uppercase; color:var(--muted); padding-left:.34em; }
+  .modal .m-concept{ font-family:"Cormorant Garamond",serif; font-style:italic; font-weight:600;
+    font-size:62px; line-height:1.04; margin:8px 0 18px;
+    background:linear-gradient(180deg,#ffffff, #b9c4ee); -webkit-background-clip:text; background-clip:text; color:transparent; }
+  .modal .m-div{ width:120px; height:1px; margin:0 auto 22px; position:relative;
+    background:linear-gradient(90deg,transparent,var(--silver),transparent); }
+  .modal .m-div::after{ content:""; position:absolute; left:50%; top:50%; width:5px; height:5px;
+    transform:translate(-50%,-50%) rotate(45deg); background:var(--red); box-shadow:0 0 8px var(--red); }
+  .modal .m-msg{ font-family:"Cormorant Garamond",serif; font-weight:500; font-size:29px; line-height:1.5;
+    color:#e7ebf9; text-wrap:pretty; max-width:560px; margin:0 auto; }
+  .modal .m-sign{ font-family:"Pinyon Script",cursive; font-size:34px; color:#c3cbe8; margin-top:24px;
+    background:var(--irid); -webkit-background-clip:text; background-clip:text; color:transparent; }
+  .modal .close{ position:absolute; top:18px; right:20px; width:38px; height:38px; border-radius:50%;
+    border:1px solid var(--silver-soft); background:rgba(255,255,255,.03); color:var(--muted);
+    font-size:20px; cursor:pointer; transition:.3s; line-height:1; }
+  .modal .close:hover{ color:var(--ink); border-color:var(--silver); transform:rotate(90deg); }
+  .navbtn{ position:absolute; top:50%; transform:translateY(-50%); width:46px; height:46px; border-radius:50%;
+    border:1px solid var(--silver-soft); background:rgba(10,16,40,.6); color:var(--muted);
+    font-family:"Cormorant Garamond",serif; font-size:30px; cursor:pointer; transition:.3s; z-index:31; }
+  .navbtn:hover:not(:disabled){ color:var(--ink); border-color:var(--silver); }
+  .navbtn:disabled{ opacity:.22; cursor:default; }
+  .navbtn.prev{ left:-70px; }
+  .navbtn.next{ right:-70px; }
+
+  /* ---- toast ---- */
+  .toast{ position:absolute; left:50%; bottom:96px; transform:translateX(-50%) translateY(12px);
+    z-index:40; font-family:"Cormorant Garamond",serif; font-style:italic; font-size:21px; color:#e7ebf9;
+    background:rgba(12,19,48,.92); border:1px solid var(--silver-soft); padding:12px 24px; border-radius:30px;
+    opacity:0; pointer-events:none; transition:opacity .4s, transform .4s; box-shadow:0 16px 40px rgba(0,0,0,.5); }
+  .toast.show{ opacity:1; transform:translateX(-50%) translateY(0); }
+  .toast b{ font-style:normal; font-weight:600; color:#fff; }
+</style>
+</head>
+<body>
+  <div id="stage">
+    <div id="canvas" data-screen-label="Calendario Eliana">
+      <div class="mandala m1"></div>
+      <div class="mandala r m2"></div>
+
+      <!-- decorative butterflies -->
+      <div class="butterfly" style="width:96px;height:84px; left:36px; top:430px; transform:rotate(-16deg); opacity:.9;">
+        <div class="wing ul"></div><div class="wing ur"></div><div class="wing ll"></div><div class="wing lr"></div>
+        <div class="b-body"></div><div class="ant l"></div><div class="ant r"></div>
+      </div>
+      <div class="butterfly red" style="width:80px;height:70px; right:60px; top:300px; transform:rotate(18deg); opacity:.9;">
+        <div class="wing ul"></div><div class="wing ur"></div><div class="wing ll"></div><div class="wing lr"></div>
+        <div class="b-body"></div><div class="ant l"></div><div class="ant r"></div>
+      </div>
+      <div class="butterfly" style="width:72px;height:64px; left:96px; bottom:150px; transform:rotate(8deg); opacity:.85;">
+        <div class="wing ul"></div><div class="wing ur"></div><div class="wing ll"></div><div class="wing lr"></div>
+        <div class="b-body"></div><div class="ant l"></div><div class="ant r"></div>
+      </div>
+
+      <!-- masthead -->
+      <header class="mast">
+        <div class="overline">21 de junio <span class="dot">◆</span> 21 de julio</div>
+        <div class="titlewrap">
+          <span class="para">para</span>
+          <span class="name">Madame Bebe</span>
+        </div>
+        <div class="subtitle">Treinta y un umbrales · un día, una palabra, un latido hacia ti</div>
+        <div class="rule"></div>
+      </header>
+
+      <!-- grid -->
+      <div class="gridwrap">
+        <div class="grid" id="grid"></div>
+      </div>
+
+      <!-- footer -->
+      <div class="footer">
+        <div class="foot-note">Ábrete un día cada día.</div>
+        <button class="preview-toggle" id="previewBtn"><span class="lamp"></span><span>Vista previa</span></button>
+      </div>
+
+      <!-- toast -->
+      <div class="toast" id="toast"></div>
+
+      <!-- modal -->
+      <div class="scrim" id="scrim">
+        <button class="navbtn prev" id="prevBtn">‹</button>
+        <div class="modal" id="modal">
+          <div class="topline"></div>
+          <button class="close" id="closeBtn">×</button>
+          <div class="m-butterfly butterfly">
+            <div class="wing ul"></div><div class="wing ur"></div><div class="wing ll"></div><div class="wing lr"></div>
+            <div class="b-body"></div><div class="ant l"></div><div class="ant r"></div>
+          </div>
+          <div class="m-date" id="mDate"></div>
+          <div class="m-concept" id="mConcept"></div>
+          <div class="m-div"></div>
+          <div class="m-msg" id="mMsg"></div>
+          <div class="m-sign">Gorrioncita</div>
+        </div>
+        <button class="navbtn next" id="nextBtn">›</button>
+      </div>
+    </div>
+  </div>
+
+<script>
+/* =========================================================================
+   CONTENIDO EDITABLE
+   Cambia libremente las palabras (concept) y los mensajes (msg) de cada día.
+   Hay 31 entradas: día 1 = 21 de junio … día 31 = 21 de julio.
+   ========================================================================= */
+const DAYS = [
+  {concept:"Aniversario", msg:"Hace 1 año que nos conocimos, el destino ya lo sabia: el 21 de junio era el día perfecto para que nuestras vidas se reencontraran. Hoy celebramos ese feliz aniversario con una bañerita."},
+  {concept:"Conciencia",    msg:"Despierto y lo primero en lo que pienso eres tú; es entonces cuando una sonrisa ilumina mi día, hoy buffecito libre de desayuno para empezar el día con tu alegría."},
+  {concept:"Presencia",     msg:"Según mi sueño hoy es el dia que nos juntamos en residencia, y es verdad: tu presencia es el regalo más grande, el que me hace sentir en casa en cualquier lugar. Día de mudanza."},
+  {concept:"Alma",          msg:"Hay algo en ti que reconozco de antes de nacer; mi alma te buscaba sin saber aún tu nombre y es por eso que te toca a ti buscar hoy, yincana en mi casa. Primera pista: busca donde todo gira para construir tu imaginacion."},
+  {concept:"Infinito",     msg:"Mi amor por ti es infinito, es por eso que el día de hoy te propongo un juego sin final: el de descubrir nuevos rincones de felicidad juntos. Dia de empezar a leer: Pensar rapido, Pensar despacio."},
+  {concept:"Despertar",      msg:"Antes de ti dormía; tu mirada fue una revelación, hoy veremos la pelicula: El dia de la revelación."},
+  {concept:"Reflejo",       msg:"En tus ojos me veo más bueno, más entero; eres el espejo donde aprendo a quererme. Hoy nos reflejaremos en el lago, pues haremos una escapada a la naturaleza."},
+  {concept:"Sombra",        msg:"Incluso mis sombras se sienten seguras contigo, el dia de hoy haremos una acampada bajo las estrellas, para que la oscuridad solo sea el manto que nos cobija."},
+  {concept:"Luz",           msg:"Eres la luz que no encandila: la que calienta, la que guía, la que se queda. Por ello hoy te propongo ver el amanecer juntos."},
+  {concept:"Vínculo",       msg:"Lo que nos une no se ata ni se rompe; es un hilo invisible que el universo tejió con cuidado. Hoy celebraremos ese vínculo con una cena especial viendo series juntitos."},
+  {concept:"Eternidad",     msg:"No te quiero para siempre por costumbre, sino porque contigo el siempre se queda corto. 1 de Julio, día de la eternidad: sesión de fotos juntos."},
+  {concept:"Misterio",      msg:"Te conozco y aún me asombras; eres el misterio que quiero pasarme la vida descifrando. Hoy te propongo un escape room, para resolver juntos enigmas y acertijos."},
+  {concept:"Silencio",      msg:"Contigo hasta el silencio habla; callar a tu lado es otra forma de decírtelo todo. Qué te parecería ir a un parque y dibujarnos el uno al otro?"},
+  {concept:"Renacer",       msg:"Cada vez que te abrazo vuelvo a empezar; me das la rara dicha de renacer sin morir. Qué tal si creamos bebes de tu plantita y los vemos crecer juntos?"},
+  {concept:"Plenitud",      msg:"Hoy es tu cumpleañosssssss mi bebe amado, querido! Hoy tu regalo es una sorpresa, pronto la verás!"},
+  {concept:"Umbral",        msg:"Hoy veremos el umbral del horizonte haciendo PARAPENTEEEEE JUNTOS!!!!!"},
+  {concept:"Asombro",       msg:"Quiero conservar siempre este asombro de mirarte: que nunca se me vuelva costumbre tu milagro. Qué tal si hoy vamos a un museo o exposición que nos deje con los ojos bien abiertos?"},
+  {concept:"Quietud",       msg:"En medio del ruido del mundo, tú eres mi quietud, tu presencia me brinda paz. Hoy te propongo organizar nuestro viaje de bici."},
+  {concept:"Vértigo",       msg:"Quererte da vértigo y aun así me lanzo, contigo caer también es volar. Beee y si hoy hacemos algo que nos de un poco de vértigo? Como ir a un parque de diversiones o probar una comida nueva y exótica juntos."},
+  {concept:"Entrega",       msg:"Te entrego no lo que me sobra, sino lo que soy. Sesion de masajitos juntos??"},
+  {concept:"Raíz",          msg:"Eres raíz y cielo a la vez, lo que me sostiene y lo que me hace crecer. Hoy te propongo plantar un árbol juntos, para que nuestras raíces crezcan entrelazadas."},
+  {concept:"Vuelo",         msg:"Como las mariposas, nuestro amor pasó por la oscuridad para aprender a volar. Podriamos intentar volar un comenta juntos."},
+  {concept:"Origen",        msg:"Eres el origen de mi alegría, la fuente de mi inspiración. Hoy te propongo escribir juntos una carta a nuestro yo del pasado, para agradecerle por habernos traído hasta aquí."},
+  {concept:"Destino",       msg:"No creía en el destino hasta que tu vida y la mía decidieron encontrarse. Qué tal si le escribimos una carta a nuestro yo del futuro, para contarle lo feliz que somos ahora?"},
+  {concept:"Comunión",      msg:"Amarte es comulgar con algo más grande que nosotros; es sentir que somos parte de un todo maravilloso. Hoy te propongo hacer una lista de cosas que queremos vivir juntos, para soñar con nuestro futuro compartido."},
+  {concept:"Éxtasis",       msg:"Hay una alegría en tenerte que no cabe en el cuerpo y se me escapa hecha ternura. Hoy te propongo bailar juntos nuestra canción favorita, para celebrar ese éxtasis que me das."},
+  {concept:"Memoria",       msg:"Guardo cada instante contigo como quien guarda reliquias, eres mi memoria más querida. Hoy te propongo hacer crecer el álbum de fotos juntos, para revivir nuestros momentos más especiales."},
+  {concept:"Horizonte",     msg:"Mire donde mire, tú eres mi horizonte, el lugar hacia donde siempre quiero ir. Qué te parece si hoy hacemos una escapada a la playa para ver el atardecer juntos?"},
+  {concept:"Latido",        msg:"Mi corazón aprendió un idioma nuevo: late tu nombre sin que yo se lo pida. Hoy te propongo hacer una playlist juntos con las canciones que nos hacen sentir más cerca, para que cada latido de esa música nos recuerde lo que tenemos."},
+  {concept:"Universo",      msg:"No eres una parte de mi mundo, Gorrioncita: eres el universo entero donde quiero existir. Hoy te propongo una noche de astronomía, para contemplar juntos las estrellas y recordar que nuestro amor es tan vasto como el cosmos."},
+  {concept:"Encuentro",     msg:"De todos los caminos posibles, doy gracias por el que me trajo a ti. Feliz encuentro, amor mío. Hoy te propongo hacer una cápsula del tiempo juntos, para guardar un recuerdo de este momento y abrirlo en el futuro, recordándonos siempre lo afortunados que somos de habernos encontrado."}
+];
+
+const MESES = ["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
+const YEAR = 2026;
+
+/* build day records: día 1 = 21 jun … 10 = 30 jun, 11 = 1 jul … 31 = 21 jul */
+const records = DAYS.map((d, i) => {
+  let date;
+  if (i < 10) date = new Date(YEAR, 5, 21 + i);      // junio
+  else        date = new Date(YEAR, 6, 1 + (i - 10)); // julio
+  return { ...d, idx:i, date, dom:date.getDate(), monAbbr:(date.getMonth()===5?"jun":"jul") };
+});
+
+const stripTime = dt => new Date(dt.getFullYear(), dt.getMonth(), dt.getDate()).getTime();
+const todayTs = stripTime(new Date());
+
+/* persistence */
+const LS_SEEN = "eliana_seen_v1";
+const LS_PREVIEW = "eliana_preview_v1";
+let seen = new Set(JSON.parse(localStorage.getItem(LS_SEEN) || "[]"));
+let preview = localStorage.getItem(LS_PREVIEW) === "1";
+
+function stateOf(rec){
+  const ts = stripTime(rec.date);
+  if (preview) return ts === todayTs ? "today" : "available";
+  if (ts > todayTs) return "locked";
+  if (ts === todayTs) return "today";
+  return "available";
+}
+
+const grid = document.getElementById("grid");
+function render(){
+  grid.innerHTML = "";
+  records.forEach(rec => {
+    const st = stateOf(rec);
+    const openable = (st === "available" || st === "today");
+    const b = document.createElement("button");
+    b.className = "portal " + st + (seen.has(rec.idx) ? " seen" : "");
+    b.dataset.i = rec.idx;
+    b.innerHTML =
+      '<span class="ring"></span>' +
+      '<span class="badge">hoy</span>' +
+      '<span class="face">' +
+        '<span class="num">'+rec.dom+'</span>' +
+        '<span class="mon">'+rec.monAbbr+'</span>' +
+        '<span class="visited"></span>' +
+      '</span>';
+    b.addEventListener("click", () => {
+      if (openable) openDay(rec.idx);
+      else lockedFeedback(b, rec);
+    });
+    grid.appendChild(b);
+  });
+}
+
+/* toast */
+const toast = document.getElementById("toast");
+let toastT;
+function showToast(html){
+  toast.innerHTML = html;
+  toast.classList.add("show");
+  clearTimeout(toastT);
+  toastT = setTimeout(()=>toast.classList.remove("show"), 3200);
+}
+function lockedFeedback(el, rec){
+  el.classList.add("shake");
+  setTimeout(()=>el.classList.remove("shake"), 520);
+  showToast('Aún no, mi amor — se abre el <b>'+rec.dom+' de '+MESES[rec.date.getMonth()]+'</b>.');
+}
+
+/* modal */
+const scrim = document.getElementById("scrim");
+const mDate = document.getElementById("mDate");
+const mConcept = document.getElementById("mConcept");
+const mMsg = document.getElementById("mMsg");
+const prevBtn = document.getElementById("prevBtn");
+const nextBtn = document.getElementById("nextBtn");
+let current = -1;
+
+function openDay(i){
+  const rec = records[i];
+  current = i;
+  mDate.textContent = "Día " + (i+1) + " · " + rec.dom + " de " + MESES[rec.date.getMonth()];
+  mConcept.textContent = rec.concept;
+  mMsg.textContent = rec.msg;
+  scrim.classList.add("open");
+  if (!seen.has(i)){ seen.add(i); localStorage.setItem(LS_SEEN, JSON.stringify([...seen])); }
+  const node = grid.querySelector('.portal[data-i="'+i+'"]');
+  if (node) node.classList.add("seen");
+  updateNav();
+}
+function isOpenable(i){
+  if (i < 0 || i >= records.length) return false;
+  const st = stateOf(records[i]);
+  return st === "available" || st === "today";
+}
+function updateNav(){
+  prevBtn.disabled = !isOpenable(current-1);
+  nextBtn.disabled = !isOpenable(current+1);
+}
+prevBtn.addEventListener("click", ()=>{ if(isOpenable(current-1)) openDay(current-1); });
+nextBtn.addEventListener("click", ()=>{ if(isOpenable(current+1)) openDay(current+1); });
+function closeModal(){ scrim.classList.remove("open"); current = -1; }
+document.getElementById("closeBtn").addEventListener("click", closeModal);
+scrim.addEventListener("click", e => { if (e.target === scrim) closeModal(); });
+document.addEventListener("keydown", e => {
+  if (!scrim.classList.contains("open")) return;
+  if (e.key === "Escape") closeModal();
+  if (e.key === "ArrowLeft" && isOpenable(current-1)) openDay(current-1);
+  if (e.key === "ArrowRight" && isOpenable(current+1)) openDay(current+1);
+});
+
+/* preview toggle */
+const previewBtn = document.getElementById("previewBtn");
+function syncPreviewBtn(){ previewBtn.classList.toggle("on", preview); }
+previewBtn.addEventListener("click", ()=>{
+  preview = !preview;
+  localStorage.setItem(LS_PREVIEW, preview ? "1" : "0");
+  syncPreviewBtn();
+  render();
+  showToast(preview ? 'Vista previa <b>activa</b> — puedes abrir todos los días.' : 'Vista previa desactivada.');
+});
+
+/* scaling */
+function fit(){
+  const s = Math.min(window.innerWidth/1920, window.innerHeight/1080);
+  document.getElementById("canvas").style.transform = "scale(" + s + ")";
+}
+window.addEventListener("resize", fit);
+
+syncPreviewBtn();
+render();
+fit();
+</script>
+</body>
+</html>
