@@ -478,17 +478,6 @@ document.addEventListener("keydown", e => {
   if (e.key === "ArrowRight" && isOpenable(current+1)) openDay(current+1);
 });
 
-/* preview toggle */
-const previewBtn = document.getElementById("previewBtn");
-function syncPreviewBtn(){ previewBtn.classList.toggle("on", preview); }
-previewBtn.addEventListener("click", ()=>{
-  preview = !preview;
-  localStorage.setItem(LS_PREVIEW, preview ? "1" : "0");
-  syncPreviewBtn();
-  render();
-  showToast(preview ? 'Vista previa <b>activa</b> — puedes abrir todos los días.' : 'Vista previa desactivada.');
-});
-
 /* scaling */
 function fit(){
   const s = Math.min(window.innerWidth/1920, window.innerHeight/1080);
@@ -496,7 +485,6 @@ function fit(){
 }
 window.addEventListener("resize", fit);
 
-syncPreviewBtn();
 render();
 fit();
 </script>
